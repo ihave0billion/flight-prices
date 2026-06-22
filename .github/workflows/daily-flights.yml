@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write # commit history/ and reports/
   issues: write # post the report as a GitHub issue
+  id-token: write # required by claude-code-action (OIDC token exchange)
 
 concurrency:
   group: daily-flights
