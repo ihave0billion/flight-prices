@@ -40,6 +40,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }} # use standard GITHUB_TOKEN, skip OIDC app-token exchange
           claude_args: >-
             --mcp-config .mcp.json
             --allowedTools "Read,Write,mcp__google-flights"
