@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "google-flights": {
+      "command": "npx",
+      "args": ["-y", "google-flights-mcp"]
+    }
+  }
+}

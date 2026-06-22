@@ -1,0 +1,25 @@
+{
+  "_comment": "Routes to track. Edit this file to add/remove/pause routes. status: active | paused | purchased. The daily job only processes 'active' watches.",
+  "defaults": {
+    "cabin": "economy",
+    "stops": "any",
+    "passengers": { "adults": 1, "children": 0, "infants": 0 },
+    "airlines": ["DL", "UA"],
+    "currency": "USD"
+  },
+  "watches": [
+    {
+      "id": "EXAMPLE-ord-lax",
+      "origin": "ORD",
+      "destination": "LAX",
+      "depart_date": "2026-09-10",
+      "return_date": "2026-09-17",
+      "cabin": "economy",
+      "stops": "any",
+      "passengers": { "adults": 1 },
+      "airlines": ["DL", "UA"],
+      "status": "paused",
+      "notes": "Example entry. Set status to 'active' or replace with your real route."
+    }
+  ]
+}

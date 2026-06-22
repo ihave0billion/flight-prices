@@ -1,6 +1,12 @@
 # Claude Code local settings
 .claude/settings.local.json
 
+# Node
+node_modules/
+
+# Transient daily scratch (history/ and reports/ ARE committed)
+data/today.json
+
 # OS noise
 .DS_Store
 Thumbs.db
