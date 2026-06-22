@@ -1,0 +1,91 @@
+name: Daily flight prices
+
+on:
+  schedule:
+    # 11:00 UTC = 07:00 America/New_York during EDT (summer/fall).
+    # Note: GitHub cron is UTC only; during EST (winter) this fires at 06:00 ET.
+    - cron: "0 11 * * *"
+  workflow_dispatch: {} # allow manual runs for testing
+
+permissions:
+  contents: write # commit history/ and reports/
+  issues: write # post the report as a GitHub issue
+
+concurrency:
+  group: daily-flights
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute today's date (US/Eastern)
+        run: echo "DATE=$(TZ=America/New_York date +%F)" >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "ihave0billion"
+          git config user.email "88118330+ihave0billion@users.noreply.github.com"
+
+      - name: Collect prices via google-flights MCP (Claude headless)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --mcp-config .mcp.json
+            --allowedTools "Read,Write,mcp__google-flights"
+            --permission-mode acceptEdits
+            --max-turns 40
+          prompt: |
+            You are running headless in CI. Today's date (US/Eastern) is ${{ env.DATE }}.
+
+            Read watches.json and RUNBOOK.md. For every watch whose status is
+            "active", use the google-flights MCP server to look up the cheapest
+            round-trip fare for EACH airline in its `airlines` list (DL = Delta,
+            UA = United), using the watch's origin, destination, depart_date,
+            return_date, cabin, passengers and stops (fall back to `defaults`
+            for missing fields). Use the server's airline-include filter to
+            restrict each search to a single carrier, and read Google's own
+            price level (low/typical/high) via get_price_insights or
+            get_calendar_heatmap, plus a booking URL via get_flight_url.
+
+            Then write data/today.json EXACTLY in this schema and nothing else:
+            {
+              "date": "${{ env.DATE }}",
+              "observations": [
+                { "watch_id": "...", "airline": "DL", "price": 412,
+                  "currency": "USD", "stops": 1, "duration": "8h30m",
+                  "google_price_level": "typical",
+                  "url": "https://www.google.com/travel/flights/..." }
+              ]
+            }
+            One observation per (active watch × airline). If an airline has no
+            matching flight, include it with "price": null. Do NOT run any
+            scripts, do NOT commit, do NOT post issues — only write
+            data/today.json.
+
+      - name: Generate report and update history
+        run: node scripts/report.mjs "${{ env.DATE }}"
+
+      - name: Commit history and reports
+        run: |
+          git add history reports
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Daily flight report ${DATE}"
+            git push
+          fi
+
+      - name: Post report to GitHub issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/post-issues.mjs

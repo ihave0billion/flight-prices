@@ -6,6 +6,7 @@ node_modules/
 
 # Transient daily scratch (history/ and reports/ ARE committed)
 data/today.json
+data/issues.json
 
 # OS noise
 .DS_Store

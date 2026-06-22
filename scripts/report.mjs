@@ -125,6 +125,7 @@ function main() {
   }
 
   const sections = [];
+  const issueItems = []; // per-route { watch_id, issue_title, body } for issue posting
   let goodDeals = 0;
 
   for (const [watchId, observations] of Object.entries(byWatch)) {
@@ -132,6 +133,7 @@ function main() {
     const watch = watchById[watchId] || {};
     const ccy = watch.currency || watchesDoc.defaults?.currency || "USD";
 
+    let routeLow = false;
     const rows = [];
     for (const obs of observations) {
       history = mergeObservation(history, obs);
@@ -142,7 +144,10 @@ function main() {
     )) {
       const c = classify(history, obs);
       const t = trend(history, obs);
-      if (c.level === "LOW" || obs.google_price_level === "low") goodDeals++;
+      if (c.level === "LOW" || obs.google_price_level === "low") {
+        goodDeals++;
+        routeLow = true;
+      }
       const series = history
         .filter((h) => h.airline === obs.airline && typeof h.price === "number")
         .map((h) => h.price);
@@ -164,13 +169,30 @@ function main() {
     const title = watch.origin
       ? `${watch.origin} → ${watch.destination}  (${watch.depart_date} → ${watch.return_date})`
       : watchId;
-    sections.push(
-      `### ${title}\n\n` +
-        `| Airline | Price | Our level | Google | Trend | Low/High seen | Stops | Link |\n` +
-        `|---|---|---|---|---|---|---|---|\n` +
-        rows.join("\n")
-    );
+    const tableHeader =
+      `| Airline | Price | Our level | Google | Trend | Low/High seen | Stops | Link |\n` +
+      `|---|---|---|---|---|---|---|---|\n`;
+    const table = tableHeader + rows.join("\n");
+    sections.push(`### ${title}\n\n${table}`);
+
+    // Per-route issue body (one GitHub issue per route).
+    const issueTitle = watch.origin
+      ? `Flight prices: ${watch.origin}→${watch.destination} ${watch.depart_date}/${watch.return_date}`
+      : `Flight prices: ${watchId}`;
+    const body =
+      `## ✈️ ${title}\n\n` +
+      (routeLow
+        ? `> 🟢 **A fare is at a LOW point today — possible good time to buy.**\n\n`
+        : ``) +
+      `**${date}**\n\n${table}\n\n` +
+      `_🟢 LOW = bottom 25% of prices we've recorded · 🔴 HIGH = top 25% · ` +
+      `Google = Google Flights' own price level. Booked it? Set this route's ` +
+      `status to \`purchased\` in watches.json to stop tracking._`;
+    issueItems.push({ watch_id: watchId, issue_title: issueTitle, body });
   }
+
+  ensureDir(join(ROOT, "data"));
+  writeFileSync(join(ROOT, "data", "issues.json"), JSON.stringify(issueItems, null, 2) + "\n");
 
   const header =
     `# ✈️ Flight Price Report — ${date}\n\n` +
